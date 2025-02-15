@@ -134,6 +134,7 @@ function ws_connect(url: string) : WebSocket {
 }
 
 function sendMessage(msg: str) {
+    console.log('DBG: sendMessage ' + msg);
 	if (!ws) return;
 	if ( ! (ws.readyState == 1) ) return;
 	if (!msg.startsWith('MM')){
@@ -194,7 +195,7 @@ function sendMessage(msg: str) {
 // Net Receive
 
 function util_char(ch: str){
-    if(ch.length != 0) throw "ch must have length 1";
+    if(ch.length != 1) throw "ch must have length 1:("+ch+")";
     return ch.charCodeAt(0);
 }
 
@@ -210,7 +211,7 @@ function net_recv_key_down(plr_id: i32, key_code: str) {
     _net_recv_key_down(plr_id, ch);
 }
 
-function net_recv_key_up(plr_id: i32, key_code: str) {
+function net_recv_key_up(plr_id: i32, key_code: str, x: num, y: num) {
     let ch = null;
     if(key_code == "KeyW") ch = 'w';
     if(key_code == "KeyA") ch = 'a';
@@ -219,7 +220,7 @@ function net_recv_key_up(plr_id: i32, key_code: str) {
     if(!ch) return;
     ch = util_char(ch);
     // @ts-ignore
-    _net_recv_key_up(plr_id, ch);
+    _net_recv_key_up(plr_id, ch, x, y);
 }
 
 
@@ -334,8 +335,7 @@ function handleMessage(msg: str) {
 		const chunks = msg.split(' ');
 		const keycode = chunks[1]!;
 		const plr_id = Number(chunks[2]!); // NOTE: When server retransmits KU/KD, it appends origin player ID to message
-		// @ts-ignore
-		_net_recv_key_down(plr_id, keycode);
+		net_recv_key_down(plr_id, keycode);
 		return;
 	}
 
@@ -345,8 +345,7 @@ function handleMessage(msg: str) {
 		const plr_id = Number(chunks[2]!);
 		const x = Number(chunks[3]!);
 		const y = Number(chunks[4]!);
-		// @ts-ignore
-		_net_recv_key_up(plr_id, keycode, x, y);
+		net_recv_key_up(plr_id, keycode, x, y);
         // note: logic below moved to C++
 		// console.log(players[plr_id]!.x);
 		// players[plr_id]!.x=x;

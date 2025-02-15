@@ -1,0 +1,31 @@
+{
+  players: [
+    {
+      x: 0,
+      y: 0,
+      alive: true,
+      life: 100,
+      exists: true,
+      deathTimer: 0,
+      keyboard: {},
+      shootState: { dx: -1, dy: -1, wantsToShoot: false },
+      ws: {},
+    },
+    {
+      x: 0,
+      y: 0,
+      alive: true,
+      life: 100,
+      exists: false,
+      deathTimer: 0,
+      keyboard: {},
+      shootState: { dx: -1, dy: -1, wantsToShoot: false },
+    },
+
+
+   ],
+  bullets: [
+    { x: 0, y: 0, xf: 0, yf: 0, dx: 0, dy: 0, alive: false, life: 0 },
+    { x: 0, y: 0, xf: 0, yf: 0, dx: 0, dy: 0, alive: false, life: 0 },
+    { x: 0, y: 0, xf: 0, yf: 0, dx: 0, dy: 0, alive: false, life: 0 },
+  ]

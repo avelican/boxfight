@@ -1,3 +1,5 @@
+
+
 #include <cassert>
 
 #include "main.hpp"
@@ -238,6 +240,56 @@ void closeApp() {
 /////////
 
 
+const Uint8* keystate = nullptr;
+Uint8* keystate_prev = nullptr;
+float x_axis_prev = 0;
+float y_axis_prev = 0;
+
+void kbd_copy_prev() {
+	int length = 0;
+	SDL_GetKeyboardState(&length);
+	keystate_prev = (Uint8*) malloc(length * sizeof(Uint8));
+	for(int i = 0; i < length; i++) {
+		keystate_prev[i] = keystate[i];
+	}
+}
+
+bool kbd_down(SDL_Scancode code){
+	if(keystate == nullptr) {
+		std::cout << "DBG: KEYSTATE IS NULL" << std::endl;
+		return false;
+	}
+	return keystate[code];
+}
+
+bool kbd_was_down(SDL_Scancode code) {
+	if(keystate == nullptr || keystate_prev == nullptr) {
+		std::cout << "DBG: KEYSTATE OR KEYSTATE_PREV IS NULL" << std::endl;
+		return false;
+	}
+	return !keystate[code] && keystate_prev[code];
+}
+
+bool kbd_pressed(SDL_Scancode code) {
+	if(keystate == nullptr || keystate_prev == nullptr) {
+		std::cout << "DBG: KEYSTATE OR KEYSTATE_PREV IS NULL" << std::endl;
+		return false;
+	}
+	return keystate[code] && !keystate_prev[code];
+}
+
+
+/////////
+
+
+void init_game() {
+	for(int i = 0; i < MAX_PLAYERS; i++) {
+		players[i] = default_player(false);
+	}
+}
+
+
+
 // Main loop function
 void mainLoop() {
     Uint32 FrameStart = SDL_GetTicks();
@@ -270,30 +322,88 @@ void mainLoop() {
 
     ////
     // handle input
-    const Uint8 *keystate = SDL_GetKeyboardState(NULL);
+    keystate = SDL_GetKeyboardState(NULL);
 
-    // float x_axis = (float)SDL_GameControllerGetAxis(gController, SDL_CONTROLLER_AXIS_LEFTX) / SDL_JOYSTICK_AXIS_MAX;
-    // float y_axis = (float)SDL_GameControllerGetAxis(gController, SDL_CONTROLLER_AXIS_LEFTY) / SDL_JOYSTICK_AXIS_MAX;
+    float x_axis = (float)SDL_GameControllerGetAxis(gController, SDL_CONTROLLER_AXIS_LEFTX) / SDL_JOYSTICK_AXIS_MAX;
+    float y_axis = (float)SDL_GameControllerGetAxis(gController, SDL_CONTROLLER_AXIS_LEFTY) / SDL_JOYSTICK_AXIS_MAX;
     // float x_axis = 0;
     // float y_axis = 0;
+	float JOY_THRESHOLD = 0.3;
 
-    // if (keystate[SDL_SCANCODE_UP] || keystate[SDL_SCANCODE_W] || y_axis < -JOY_THRESHOLD) {
-    //     guy_y -= guy_move_speed;
-    // }
-    // if (keystate[SDL_SCANCODE_DOWN] || keystate[SDL_SCANCODE_S] || y_axis > JOY_THRESHOLD) {
-    //     guy_y += guy_move_speed;
-    // }
-    // if (keystate[SDL_SCANCODE_LEFT] || keystate[SDL_SCANCODE_A] || x_axis < -JOY_THRESHOLD) {
-    //     guy_x -= guy_move_speed;
-    // }
-    // if (keystate[SDL_SCANCODE_RIGHT] || keystate[SDL_SCANCODE_D] || x_axis > JOY_THRESHOLD) {
-    //     guy_x += guy_move_speed;
-    // }
+#ifdef EMSCRIPTEN
+	
+	if (kbd_pressed(SDL_SCANCODE_1)) {
+		std::cout << "1" << std::endl;
+	}
+
+    if (kbd_pressed(SDL_SCANCODE_UP) || kbd_pressed(SDL_SCANCODE_W) || y_axis < -JOY_THRESHOLD) {
+		std::cout << "DBG: MOVE UP" << std::endl;
+		EM_ASM(
+			sendMessage('KD KeyW');
+		);
+
+	
+	}else if(kbd_was_down(SDL_SCANCODE_UP) || kbd_was_down(SDL_SCANCODE_W)
+			|| y_axis == 0 && (y_axis_prev < -JOY_THRESHOLD) ) {
+		std::cout << "DBG: MOVE UP STOP" << std::endl;
+		EM_ASM(
+			sendMessage('KU KeyW');
+		);
+	}
+	
+	
+	if (kbd_pressed(SDL_SCANCODE_DOWN) || kbd_pressed(SDL_SCANCODE_S) || y_axis > JOY_THRESHOLD) {
+		std::cout << "DBG: MOVE DOWN" << std::endl;
+		EM_ASM(
+			sendMessage('KD KeyS');
+		);
+	}else if(kbd_was_down(SDL_SCANCODE_DOWN) || kbd_was_down(SDL_SCANCODE_S)
+			|| y_axis == 0 && (y_axis_prev > JOY_THRESHOLD) ) {
+		std::cout << "DBG: MOVE DOWN STOP" << std::endl;
+		EM_ASM(
+			sendMessage('KU KeyS');
+		);
+	}
+
+    if (kbd_pressed(SDL_SCANCODE_LEFT) || kbd_pressed(SDL_SCANCODE_A) || x_axis < -JOY_THRESHOLD) {
+		std::cout << "DBG: MOVE LEFT" << std::endl;
+		EM_ASM(
+			sendMessage('KD KeyA');
+		);
+	} else if(kbd_was_down(SDL_SCANCODE_LEFT) || kbd_was_down(SDL_SCANCODE_A)
+			|| x_axis == 0 && (x_axis_prev < -JOY_THRESHOLD) ) {
+		std::cout << "DBG: MOVE LEFT STOP" << std::endl;
+		EM_ASM(
+			sendMessage('KU KeyA');
+		);
+	}
+
+    if (kbd_pressed(SDL_SCANCODE_RIGHT) || kbd_pressed(SDL_SCANCODE_D) || x_axis > JOY_THRESHOLD) {
+		std::cout << "DBG: MOVE RIGHT" << std::endl;
+		EM_ASM(
+			sendMessage('KD KeyD');
+		);
+	}else if(kbd_was_down(SDL_SCANCODE_RIGHT) || kbd_was_down(SDL_SCANCODE_D)
+			|| x_axis == 0 && (x_axis_prev > JOY_THRESHOLD) ) {
+		std::cout << "DBG: MOVE RIGHT STOP" << std::endl;
+		EM_ASM(
+			sendMessage('KU KeyD');
+		);
+	}
+#endif
 
     ////
     // update
 
 	update(FrameStart);
+
+
+	kbd_copy_prev();
+	x_axis_prev = x_axis;
+	y_axis_prev = y_axis;
+	
+	///////////
+	/// draw
 
     SDL_RenderClear(gRenderer);
 
@@ -329,7 +439,7 @@ int main(int argc, char* args[]) {
     }
 
 
-
+	init_game();
 
 #ifdef EMSCRIPTEN
 
@@ -578,6 +688,7 @@ void net_recv_key_down(s32 plr_id, char key) {
 			players[plr_id].wasd.d = true;
 		break;
 		default:
+            std::cout << key;
 			assert(0);
 		break;
 	}
@@ -601,6 +712,7 @@ void net_recv_key_up(s32 plr_id, char key, s32 x, s32 y) {
 			players[plr_id].wasd.d = false;
 		break;
 		default:
+            std::cout << key;
 			assert(0);
 		break;
 	}
@@ -1140,9 +1252,7 @@ void DrawRectArgs(s32 x, s32 y, s32 w, s32 h, Color c) {
 
 void DrawRectArgsCam(s32 x, s32 y, s32 w, s32 h, Color color){
 
-	// TODO FIXME PORT 
 
-	// f32 [xc, yc] = GetCameraOffset(x,y);
 
 	// so I'm offsetting the camera by half
 	// the player's size
@@ -1153,8 +1263,9 @@ void DrawRectArgsCam(s32 x, s32 y, s32 w, s32 h, Color color){
 	// rn. render players "around" their
 	// coord instead of bottom and to the right?
 	// but this would complicate player hitboxing...
-	
-	// DrawRectArgs(xc,yc,w,h,color);
+
+	v2 c = GetCameraOffset(x,y);
+	DrawRectArgs(c.x,c.y,w,h,color);
 }
 
 ///////////////////////////
@@ -1932,6 +2043,7 @@ s32 _frame_time = 0;
 
 
 void update(s32 time)  {
+	// std::cout << "UPDATE " << time << std::endl;
 	const s32 dt = time - _time_prev;
 	// console.log(dt);
 	// if ( dt < 16 ) {
@@ -1945,6 +2057,11 @@ void update(s32 time)  {
 	// Keyboard.pressed = {}; // clear pressed keys at the end of each frame
 
 	rand_const_reset();
+
+	// players[0].exists = true;
+	// players[0].x++;
+	// players[0].y++;
+	
 
 	update_players(dt);
 	update_bullets(dt);
@@ -1996,18 +2113,21 @@ void update_player(s32 id, s32 dt)  {
 
 		// TODO FIXME PORT
 
-		// if(player_is_key_down(id, "KeyW") || player_is_key_down(id, "ArrowUp") ) {
-		// 	player.y -= PLAYER_MOVE_SPEED * f;
-		// }
-		// if(player_is_key_down(id, "KeyS") || player_is_key_down(id, "ArrowDown") ) {
-		// 	player.y += PLAYER_MOVE_SPEED * f;
-		// }
-		// if(player_is_key_down(id, "KeyA") || player_is_key_down(id, "ArrowLeft") ) {
-		// 	player.x -= PLAYER_MOVE_SPEED * f;
-		// }
-		// if(player_is_key_down(id, "KeyD") || player_is_key_down(id, "ArrowRight") ) {
-		// 	player.x += PLAYER_MOVE_SPEED * f;
-		// }
+		// std::cout << player.x << std::endl;
+		if(players[id].wasd.w ) {
+			players[id].y -= s32(PLAYER_MOVE_SPEED * f);
+		}
+		if(players[id].wasd.s) {
+			players[id].y += s32(PLAYER_MOVE_SPEED * f);
+		}
+		if(players[id].wasd.a) {
+			players[id].x -= s32(PLAYER_MOVE_SPEED * f);
+		}
+		if(players[id].wasd.d ) {
+			players[id].x += s32(PLAYER_MOVE_SPEED * f);
+		}
+		// std::cout << " move speed " << s32(PLAYER_MOVE_SPEED * f) << std::endl;
+		// std::cout << player.x << std::endl;
 
 		// player.x = int(player.x);
 		// player.y = int(player.y);
@@ -2184,9 +2304,9 @@ void draw_player(Player p, s32 id) {
 		// it looks pretty cool
 		color = color_from_index(id);
 	}
-	std::cout << p.x << " " << p.y << " " << p.x << " " 
-	<< color.r << " " << color.g << " " << color.b << " " 
-	<< color.a << std::endl;
+	// std::cout << p.x << " " << p.y << " "
+	// << (int)color.r << " " << (int)color.g << " " << (int)color.b << " " 
+	// << (int)color.a << std::endl;
 	DrawRectArgsCam(p.x, p.y, PLAYER_WIDTH, PLAYER_HEIGHT, color);
 
 	std::string text;
